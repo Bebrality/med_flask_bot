@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Medicine Bot</title>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            display: flex;
+            gap: 25px;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            width: 360px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        input {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            margin: 5px 0;
+            width: 100%;
+            outline: none;
+        }
+
+        input:focus {
+            border-color: #667eea;
+        }
+
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        .send {
+            background: #667eea;
+            color: white;
+        }
+
+        .add {
+            background: #2ecc71;
+            color: white;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .take {
+            background: #3498db;
+            color: white;
+        }
+
+        .delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .reset {
+            background: #f39c12;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .chat-box {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f1f2f6;
+            border-radius: 8px;
+            min-height: 40px;
+        }
+
+        .med {
+            background: #f9f9f9;
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .taken {
+            color: green;
+            font-weight: bold;
+        }
+
+        .actions button {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+
+    <div class="card">
+        <h2>🤖 Чат</h2>
+
+        <form method="post">
+            <input type="text" name="message" placeholder="Напиши сообщение...">
+            <button class="send">Отправить</button>
+        </form>
+
+        <div class="chat-box">
+            <b>Ответ:</b> {{ response }}
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>💊 Лекарства</h2>
+
+        <input id="name" placeholder="Название">
+        <input id="time" placeholder="12:00">
+        <button class="add" onclick="add()">Добавить</button>
+
+        <hr>
+
+        <div id="list"></div>
+
+        <button class="reset" onclick="clearAll()">Очистить всё</button>
+    </div>
+
+</div>
+
+<script>
+    function checkTime() {
+    fetch('/check_time')
+    .then(res => res.json())
+    .then(data => {
+        data.forEach(m => {
+            playSound();
+alert("🔔 Пора принять: " + m.name);
+        });
+    });
+}
+
+setInterval(checkTime, 5000);
+function loadMeds() {
+    fetch('/meds')
+    .then(res => res.json())
+    .then(data => {
+        let html = "";
+
+        data.forEach(m => {
+            html += `
+                <div class="med">
+                    <div>
+                        ${m.name} (${m.time})
+                        ${m.taken ? '<span class="taken">✔</span>' : ''}
+                    </div>
+
+                    <div class="actions">
+                        ${!m.taken ? `<button class="take" onclick="take(${m.id})">✔</button>` : ''}
+                        <button class="delete" onclick="del(${m.id})">✖</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById("list").innerHTML = html;
+    });
+}
+
+function add() {
+    fetch('/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `name=${document.getElementById("name").value}&time=${document.getElementById("time").value}`
+    }).then(loadMeds);
+}
+
+function take(id) {
+    fetch(`/take/${id}`).then(loadMeds);
+}
+
+function del(id) {
+    fetch(`/delete/${id}`).then(loadMeds);
+}
+
+function clearAll() {
+    fetch('/clear').then(loadMeds);
+}
+
+setInterval(loadMeds, 1500);
+loadMeds();
+let sound;
+
+document.addEventListener("click", () => {
+    sound = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg");
+});
+
+function playSound() {
+    if (sound) {
+        sound.currentTime = 0;
+        sound.play().catch(e => console.log("звук не дался"));
+    }
+}
+</script>
+<audio id="alertSound" src="https://www.soundjay.com/buttons/sounds/beep-07.mp3"></audio>
+</body>
+</html>
